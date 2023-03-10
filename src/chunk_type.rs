@@ -1,10 +1,9 @@
-use std::{fmt, str::FromStr};
-
-#[derive(Debug, PartialEq, Eq)]
-struct ParseChunkTypeError;
+use std::{fmt, str};
 
 #[derive(Debug)]
-pub struct ChunkType(u8, u8, u8, u8);
+pub struct ChunkType {
+    bytes: [u8; 4],
+}
 
 impl TryFrom<[u8; 4]> for ChunkType {
     type Error = &'static str;
@@ -13,28 +12,24 @@ impl TryFrom<[u8; 4]> for ChunkType {
         if value.iter().any(|x| !x.is_ascii()) {
             Err("Not valid ascii character")
         } else {
-            Ok(ChunkType(value[0], value[1], value[2], value[3]))
+            Ok(ChunkType { bytes: value })
         }
     }
 }
 
 impl fmt::Display for ChunkType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}{}{}{}",
-            self.0 as char, self.1 as char, self.2 as char, self.3 as char
-        )
+        write!(f, "{}", std::str::from_utf8(&self.bytes).unwrap())
     }
 }
 
-impl FromStr for ChunkType {
+impl str::FromStr for ChunkType {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let sb = s.as_bytes().to_owned();
+        let sb: [u8; 4] = s.as_bytes().try_into().unwrap();
         if sb.iter().all(|e| e.is_ascii_alphabetic()) {
-            Ok(ChunkType(sb[0], sb[1], sb[2], sb[3]))
+            Ok(ChunkType { bytes: sb })
         } else {
             Err("Not A-Za-z")
         }
@@ -43,31 +38,30 @@ impl FromStr for ChunkType {
 
 impl PartialEq for ChunkType {
     fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0 && self.1 == other.1 && self.2 == other.2 && self.3 == other.3
+        self.bytes == other.bytes
     }
 }
 
 impl ChunkType {
     fn bytes(&self) -> [u8; 4] {
-        [self.0, self.1, self.2, self.3]
+        self.bytes
     }
     fn is_valid(&self) -> bool {
-        let all_alphabetic = self.bytes().iter().all(|x| x.is_ascii_alphabetic());
-        let valid_reserved_bit = self.is_reserved_bit_valid();
-        return all_alphabetic && valid_reserved_bit;
+        let all_alphabetic = self.bytes.iter().all(|x| x.is_ascii_alphabetic());
+        all_alphabetic && self.is_reserved_bit_valid()
     }
 
     fn is_critical(&self) -> bool {
-        self.bytes()[0].is_ascii_uppercase()
+        self.bytes[0].is_ascii_uppercase()
     }
     fn is_public(&self) -> bool {
-        self.bytes()[1].is_ascii_uppercase()
+        self.bytes[1].is_ascii_uppercase()
     }
     fn is_reserved_bit_valid(&self) -> bool {
-        self.bytes()[2].is_ascii_uppercase()
+        self.bytes[2].is_ascii_uppercase()
     }
     fn is_safe_to_copy(&self) -> bool {
-        self.bytes()[3].is_ascii_lowercase()
+        self.bytes[3].is_ascii_lowercase()
     }
 }
 
