@@ -2,7 +2,7 @@ use std::{fmt, str};
 
 #[derive(Debug)]
 pub struct ChunkType {
-    bytes: [u8; 4],
+    pub bytes: [u8; 4],
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {
