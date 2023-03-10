@@ -27,9 +27,9 @@ impl str::FromStr for ChunkType {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let sb: [u8; 4] = s.as_bytes().try_into().unwrap();
-        if sb.iter().all(|e| e.is_ascii_alphabetic()) {
-            Ok(ChunkType { bytes: sb })
+        let bytes: [u8; 4] = s.as_bytes().try_into().unwrap();
+        if bytes.iter().all(|e| e.is_ascii_alphabetic()) {
+            Ok(ChunkType { bytes })
         } else {
             Err("Not A-Za-z")
         }
@@ -43,24 +43,23 @@ impl PartialEq for ChunkType {
 }
 
 impl ChunkType {
-    fn bytes(&self) -> [u8; 4] {
+    pub fn bytes(&self) -> [u8; 4] {
         self.bytes
     }
-    fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         let all_alphabetic = self.bytes.iter().all(|x| x.is_ascii_alphabetic());
         all_alphabetic && self.is_reserved_bit_valid()
     }
-
-    fn is_critical(&self) -> bool {
+    pub fn is_critical(&self) -> bool {
         self.bytes[0].is_ascii_uppercase()
     }
-    fn is_public(&self) -> bool {
+    pub fn is_public(&self) -> bool {
         self.bytes[1].is_ascii_uppercase()
     }
-    fn is_reserved_bit_valid(&self) -> bool {
+    pub fn is_reserved_bit_valid(&self) -> bool {
         self.bytes[2].is_ascii_uppercase()
     }
-    fn is_safe_to_copy(&self) -> bool {
+    pub fn is_safe_to_copy(&self) -> bool {
         self.bytes[3].is_ascii_lowercase()
     }
 }
