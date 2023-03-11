@@ -4,10 +4,8 @@ use crc::CRC_32_ISO_HDLC;
 use std::{fmt, string::FromUtf8Error};
 
 pub struct Chunk {
-    data_length: u32,
     chunk_type: ChunkType,
     message_bytes: Vec<u8>,
-    crc: u32,
 }
 
 impl fmt::Display for Chunk {
@@ -25,46 +23,34 @@ impl TryFrom<&[u8]> for Chunk {
             return Err("no valid chunk type");
         }
         let data_length = u32::from_be_bytes(value[..4].to_owned().try_into().unwrap());
-        let chunk_type = ChunkType {
-            bytes: value[4..8].try_into().unwrap(),
-        };
+        let chunk_type = ChunkType::try_from([value[4], value[5], value[6], value[7]]).unwrap();
         if !chunk_type.is_reserved_bit_valid() {
             return Err("Reserved bit invalid");
         }
         let message_bytes = value[8..value.len() - 4].to_owned();
-        let crc_computed = Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(&value[4..value.len() - 4]);
         let crc = u32::from_be_bytes(value[value.len() - 4..].to_owned().try_into().unwrap());
+
+        let chunk = Chunk {
+            chunk_type,
+            message_bytes: message_bytes.into(),
+        };
+        let crc_computed = chunk.crc();
         if crc != crc_computed {
             return Err("CRC does not match. Data corrupted");
         }
-
-        Ok(Chunk {
-            data_length,
-            chunk_type,
-            message_bytes: message_bytes.into(),
-            crc,
-        })
+        Ok(chunk)
     }
 }
 
 impl Chunk {
     pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Self {
-        let bytes = chunk_type
-            .bytes()
-            .iter()
-            .cloned()
-            .chain(data.iter().cloned())
-            .collect::<Vec<u8>>();
-        let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(&bytes[..]);
         Self {
-            data_length: data.len().try_into().unwrap(),
             chunk_type: chunk_type,
             message_bytes: data,
-            crc: crc,
         }
     }
     pub fn length(&self) -> u32 {
-        self.data_length
+        u32::try_from(self.message_bytes.len()).unwrap()
     }
     pub fn chunk_type(&self) -> &ChunkType {
         &self.chunk_type
@@ -73,7 +59,8 @@ impl Chunk {
         &self.message_bytes
     }
     pub fn crc(&self) -> u32 {
-        self.crc
+        let bytes = self.as_bytes();
+        Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(&bytes)
     }
     pub fn data_as_string(&self) -> Result<String, FromUtf8Error> {
         String::from_utf8(self.data().to_vec())

@@ -1,18 +1,23 @@
 use std::{fmt, str};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ChunkType {
     bytes: [u8; 4],
 }
 
-impl TryFrom<[u8; 4]> for ChunkType {
-    type Error = &'static str;
+#[derive(Debug)]
+pub enum ChunkTypeError {
+    ParseError(&'static str),
+}
 
-    fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
-        if value.iter().any(|x| !x.is_ascii()) {
-            Err("Not valid ascii character")
+impl TryFrom<[u8; 4]> for ChunkType {
+    type Error = ChunkTypeError;
+
+    fn try_from(bytes: [u8; 4]) -> Result<Self, Self::Error> {
+        if bytes.iter().any(|x| !x.is_ascii()) {
+            Err(ChunkTypeError::ParseError("Bytes not ascii"))
         } else {
-            Ok(ChunkType { bytes: value })
+            Ok(ChunkType { bytes })
         }
     }
 }
@@ -24,21 +29,19 @@ impl fmt::Display for ChunkType {
 }
 
 impl str::FromStr for ChunkType {
-    type Err = &'static str;
+    type Err = ChunkTypeError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let bytes: [u8; 4] = s.as_bytes().try_into().unwrap();
-        if bytes.iter().all(|e| e.is_ascii_alphabetic()) {
-            Ok(ChunkType { bytes })
+        let bytes: &[u8] = s.as_bytes();
+        if bytes.len() != 4 {
+            Err(ChunkTypeError::ParseError("Chunk type is not 4 byte"))
+        } else if bytes.iter().any(|e| !e.is_ascii_alphabetic()) {
+            Err(ChunkTypeError::ParseError("Not ascii alphabetic"))
         } else {
-            Err("Not A-Za-z")
+            Ok(ChunkType {
+                bytes: bytes.try_into().unwrap(),
+            })
         }
-    }
-}
-
-impl PartialEq for ChunkType {
-    fn eq(&self, other: &Self) -> bool {
-        self.bytes == other.bytes
     }
 }
 
