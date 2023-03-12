@@ -59,18 +59,27 @@ impl Chunk {
         &self.message_bytes
     }
     pub fn crc(&self) -> u32 {
-        let bytes = self.as_bytes();
+        let bytes = self
+            .chunk_type
+            .bytes()
+            .iter()
+            .cloned()
+            .chain(self.message_bytes.iter().cloned())
+            .collect::<Vec<u8>>();
         Crc::<u32>::new(&CRC_32_ISO_HDLC).checksum(&bytes)
     }
     pub fn data_as_string(&self) -> Result<String, FromUtf8Error> {
         String::from_utf8(self.data().to_vec())
     }
     pub fn as_bytes(&self) -> Vec<u8> {
-        self.chunk_type
-            .bytes()
+        let data_length = self.length().to_be_bytes();
+
+        data_length
             .iter()
             .cloned()
+            .chain(self.chunk_type().bytes().iter().cloned())
             .chain(self.message_bytes.iter().cloned())
+            .chain(self.crc().to_be_bytes().iter().cloned())
             .collect::<Vec<u8>>()
     }
 }
