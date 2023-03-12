@@ -43,7 +43,7 @@ impl Png {
             .find(|chunk| *chunk.chunk_type() == other_chunk_type)
     }
     fn as_bytes(&self) -> Vec<u8> {
-        let mut bytes: Vec<u8> = Vec::new();
+        let mut bytes = self.header().to_vec();
         for chunk in self.chunks() {
             bytes.append(&mut chunk.as_bytes());
         }
